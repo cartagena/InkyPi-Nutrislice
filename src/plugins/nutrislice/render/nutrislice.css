@@ -1,0 +1,91 @@
+.nutrislice-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    font-family: "Jost";
+    overflow: hidden;
+}
+
+.menu-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-bottom: 1.5dvh;
+    border-bottom: 2px solid;
+}
+
+.school-name {
+    font-size: 4.2dvh;
+    font-weight: bold;
+}
+
+.meal-type {
+    font-size: 2.6dvh;
+    opacity: 0.75;
+}
+
+.days-container {
+    display: grid;
+    grid-template-columns: repeat(var(--day-count), 1fr);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 1.5dvh;
+}
+
+.day-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0 1.2dvw;
+    border-left: 1px solid;
+    overflow: hidden;
+}
+
+.day-column:first-child {
+    border-left: none;
+}
+
+.day-header {
+    text-align: center;
+    padding-bottom: 1dvh;
+    border-bottom: 1px solid;
+    margin-bottom: 1dvh;
+}
+
+.day-weekday {
+    font-size: 3.2dvh;
+    font-weight: bold;
+}
+
+.day-date {
+    font-size: 2dvh;
+    opacity: 0.7;
+}
+
+.items-list {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    min-height: 0;
+    gap: calc(3dvh * var(--item-scale, 1));
+    overflow: hidden;
+}
+
+.menu-item {
+    line-height: 1.25;
+}
+
+.item-name {
+    font-size: calc(2.6dvh * var(--item-scale, 1));
+    font-weight: 500;
+    overflow-wrap: break-word;
+}
+
+.item-carbs {
+    font-size: calc(2dvh * var(--item-scale, 1));
+    opacity: 0.7;
+}

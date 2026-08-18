@@ -1,0 +1,32 @@
+{% extends "plugin.html" %}
+
+{% block content %}
+
+<div class="nutrislice-container">
+    <div class="menu-header">
+        <div class="school-name">{{ school }}</div>
+        <div class="meal-type">{{ meal_type }}</div>
+    </div>
+    <div class="days-container" style="--day-count: {{ days|length }}; --item-scale: {{ item_scale }};">
+        {% for day in days %}
+        <div class="day-column">
+            <div class="day-header">
+                <div class="day-weekday">{{ day.weekday }}</div>
+                <div class="day-date">{{ day.date_label }}</div>
+            </div>
+            <div class="items-list">
+                {% for item in day.foods %}
+                <div class="menu-item">
+                    <div class="item-name">{{ item.name }}</div>
+                    {% if show_carbs and item.carbs is not none %}
+                    <div class="item-carbs">{{ item.carbs | round | int }}g carbs</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
