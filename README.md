@@ -1,6 +1,6 @@
 # InkyPi-Nutrislice
 
-Displays your school's cafeteria menu — with per-item carb counts — from Nutrislice on your [InkyPi](https://github.com/fatihak/InkyPi) e-ink display.
+Displays your school's cafeteria menu — with per-item carb counts — from Nutrislice on your [InkyPi](https://github.com/jtn0123/InkyPi) e-ink display.
 
 ![Nutrislice plugin showing a 3-day school lunch menu with carb counts on an InkyPi display](docs/screenshot.png)
 
@@ -11,6 +11,10 @@ Displays your school's cafeteria menu — with per-item carb counts — from Nut
 - Works with any school district that uses Nutrislice
 - Item text and spacing auto-scale so busy menu days (many entrees/sides) don't get clipped
 
+## Compatibility
+
+**Requires [jtn0123/InkyPi](https://github.com/jtn0123/InkyPi). This plugin does not run on upstream [fatihak/InkyPi](https://github.com/fatihak/InkyPi).** It imports several host modules that exist only in that fork — the declarative settings-schema DSL (`plugins.base_plugin.settings_schema`), the shared HTTP session (`utils.http_client`), and the timezone helpers (`utils.time_utils`) — so on upstream it fails at import time rather than degrading.
+
 ## Installation
 
 Install the plugin from this GitHub repository:
@@ -19,14 +23,14 @@ Install the plugin from this GitHub repository:
 inkypi plugin install nutrislice https://github.com/cartagena/InkyPi-Nutrislice
 ```
 
-If you're running a fork of InkyPi rather than the upstream project, check that fork's own documentation — plugin installation and loading steps can differ.
+This assumes a [jtn0123/InkyPi](https://github.com/jtn0123/InkyPi) checkout — see [Compatibility](#compatibility) above. Other forks' plugin installation and loading steps can differ; check that fork's own documentation.
 
 ## Configuration
 
 | Setting | Description |
 | --- | --- |
 | **School Menu Url** | Required. The url for your school's menu on your district's Nutrislice site, e.g. `https://<district>.nutrislice.com/menu/<school>/<meal-type>/`. Visit your district's Nutrislice site, select your school and a meal (lunch or breakfast), and copy that page's url. |
-| **Days to Show** | `1 Day`, `3 Days`, or `Full Week`. Days with no published menu (weekends, holidays) are skipped automatically. |
+| **Days to Show** | `1 Day`, `3 Days`, or `Full Week`. Counts *published* days, so weekends and holidays are skipped rather than shown blank — `Full Week` means the next 7 days that have a menu, which will usually run into the following school week. |
 | **Show Carbs** | Toggle to show/hide the carbohydrate count (in grams) for each food item. |
 
 ## External API
