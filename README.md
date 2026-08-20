@@ -39,7 +39,34 @@ This plugin depends on **Nutrislice**, the vendor that powers school district me
 
 ## Testing
 
-The plugin has a pytest suite (`tests/plugins/test_nutrislice.py`), but it depends on fixtures and templates from an InkyPi checkout (e.g. `device_config_dev`, `settings_schema.html`), so it isn't runnable from this repo standalone. To run it: drop the test file into `<inkypi-checkout>/tests/plugins/`, then from that checkout run `PYTHONPATH=$(pwd)/src pytest tests/plugins/test_nutrislice.py`.
+Two suites, split by what they need. **No test in either one contacts a real Nutrislice server** — the menu API is mocked everywhere.
+
+### Unit tests — run anywhere
+
+No InkyPi, no network, no browser. From a bare clone:
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/unit
+```
+
+Covers URL parsing, meal-type label formatting, item-scale bounds, settings validation, menu-item parsing, date filtering/dedup in `extract_days`, and the two-week fetch fallback.
+
+`tests/conftest.py` stands in for the host modules the plugin imports (`BasePlugin`, the settings-schema DSL, `get_http_session`, `get_timezone`). The stubbed `render_image` deliberately raises rather than returning a fake image, and the stubbed HTTP session refuses to make requests, so neither a template regression nor an accidental live call can pass here.
+
+### Integration tests — need a real InkyPi checkout
+
+Runs against the real `BasePlugin`, the real plugin registry, the real Jinja + headless-Chromium render pipeline, and the real `settings_schema.html` macros (which is what catches a field kwarg the macros silently ignore).
+
+```bash
+git clone https://github.com/jtn0123/InkyPi ../InkyPi
+ln -s "$PWD/nutrislice" ../InkyPi/src/plugins/nutrislice
+INKYPI_PATH=../InkyPi pytest tests/integration
+```
+
+Without `INKYPI_PATH` these are skipped, not failed, so a plain `pytest` from a clean clone still exits green having run the unit suite.
+
+CI runs both, plus the *unit* suite a second time with `INKYPI_PATH` set — the same tests unstubbed, so a stub that has drifted from InkyPi's real behavior surfaces as a failure instead of quietly still passing.
 
 ## Development status
 

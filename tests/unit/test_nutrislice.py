@@ -11,12 +11,11 @@ still checked, this only silences mypy's complaint about the decorator.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PIL import Image
 
 if TYPE_CHECKING:
     from plugins.nutrislice.nutrislice import Nutrislice
@@ -41,6 +40,27 @@ def _food_item(name: str = "Pizza", carbs: float = 30.0) -> dict[str, Any]:
             "rounded_nutrition_info": {"g_carbs": carbs},
         }
     }
+
+
+class _FakeDeviceConfig:
+    """Minimal DeviceConfigLike stand-in.
+
+    generate_image only reads the timezone and the resolution/orientation, so
+    a real InkyPi Config would add nothing here beyond a host dependency.
+    """
+
+    def __init__(self, timezone: str = "UTC", resolution: tuple[int, int] = (800, 480)):
+        self._timezone = timezone
+        self._resolution = resolution
+
+    def get_resolution(self) -> tuple[int, int]:
+        return self._resolution
+
+    def get_config(self, key: str, default: Any = None) -> Any:
+        return self._timezone if key == "timezone" else default
+
+    def load_env_key(self, key: str) -> str | None:
+        return None
 
 
 def _mock_week_response(days: list[dict[str, Any]]) -> MagicMock:
@@ -268,9 +288,11 @@ def test_fetch_menu_fetches_second_week_when_first_week_is_short(
 
 
 def test_fetch_menu_raises_when_first_week_fetch_fails(plugin: Nutrislice) -> None:
-    with patch.object(plugin, "fetch_week", side_effect=RuntimeError("boom")):
-        with pytest.raises(RuntimeError, match="Failed to fetch menu"):
-            plugin.fetch_menu("district", "school", "lunch", 3, datetime(2026, 8, 18))
+    with (
+        patch.object(plugin, "fetch_week", side_effect=RuntimeError("boom")),
+        pytest.raises(RuntimeError, match="Failed to fetch menu"),
+    ):
+        plugin.fetch_menu("district", "school", "lunch", 3, datetime(2026, 8, 18))
 
 
 def test_fetch_menu_tolerates_second_week_fetch_failure(plugin: Nutrislice) -> None:
@@ -284,50 +306,36 @@ def test_fetch_menu_tolerates_second_week_fetch_failure(plugin: Nutrislice) -> N
 
 
 def test_fetch_menu_raises_when_no_upcoming_days(plugin: Nutrislice) -> None:
-    with patch.object(plugin, "fetch_week", return_value=[]):
-        with pytest.raises(RuntimeError, match="No upcoming menu items"):
-            plugin.fetch_menu("district", "school", "lunch", 3, datetime(2026, 8, 18))
+    with (
+        patch.object(plugin, "fetch_week", return_value=[]),
+        pytest.raises(RuntimeError, match="No upcoming menu items"),
+    ):
+        plugin.fetch_menu("district", "school", "lunch", 3, datetime(2026, 8, 18))
 
 
 # ---------------------------------------------------------------------------
-# generate_image (end-to-end, HTTP mocked)
+# generate_image
+#
+# Only the paths that fail *before* rendering live here — the actual
+# Jinja/Chromium render needs a real host and is covered in
+# tests/integration/test_nutrislice_integration.py.
 # ---------------------------------------------------------------------------
 
 
-def test_generate_image_success(plugin: Nutrislice, device_config_dev: Any) -> None:
-    week = [
-        {
-            "date": datetime.now(UTC).strftime("%Y-%m-%d"),
-            "menu_items": [_food_item("Pizza", 30.0), _food_item("Salad", 12.0)],
-        }
-    ]
-    mock_resp = _mock_week_response(week)
-
-    with patch("plugins.nutrislice.nutrislice.get_http_session") as mock_session_fn:
-        mock_session_fn.return_value.get.return_value = mock_resp
-        result = plugin.generate_image(
-            {
-                "menuUrl": "https://district.nutrislice.com/menu/school/lunch/",
-                "daysToShow": "1",
-                "showCarbs": "true",
-            },
-            device_config_dev,
-        )
-
-    assert isinstance(result, Image.Image)
-    assert result.size == (800, 480)
+def test_generate_image_rejects_missing_menu_url(plugin: Nutrislice) -> None:
+    with pytest.raises(RuntimeError, match="required"):
+        plugin.generate_image({}, _FakeDeviceConfig())
 
 
-def test_generate_image_requires_menu_url(
-    plugin: Nutrislice, device_config_dev: Any
-) -> None:
-    with pytest.raises(RuntimeError):
-        plugin.generate_image({}, device_config_dev)
+def test_generate_image_rejects_unrecognized_menu_url(plugin: Nutrislice) -> None:
+    with pytest.raises(RuntimeError, match="Unrecognized"):
+        plugin.generate_image({"menuUrl": "https://example.com/lunch"}, _FakeDeviceConfig())
 
 
 # ---------------------------------------------------------------------------
-# build_settings_schema — catch schema/template mismatches (e.g. an
-# unsupported field kwarg silently rendering nothing instead of erroring).
+# build_settings_schema — the shape assertions. Rendering the schema through
+# InkyPi's real Jinja macros (which is what catches a silently-dropped field
+# kwarg) needs the host's templates/, so it lives in the integration suite.
 # ---------------------------------------------------------------------------
 
 
@@ -349,31 +357,3 @@ def test_settings_schema_has_expected_fields(plugin: Nutrislice) -> None:
     }
     assert {"menuUrl"} <= field_names
     assert {"daysToShow", "showCarbs"} <= row_field_names
-
-
-def test_settings_schema_renders_without_error(plugin: Nutrislice) -> None:
-    """Render the schema through InkyPi's real settings_schema.html template.
-
-    Guards against typos in field kwargs (e.g. a field description under the
-    wrong key) that the Jinja macros silently ignore instead of erroring —
-    the schema would build fine but the setting would be invisible in the UI.
-    """
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-
-    from utils.app_utils import resolve_path
-
-    templates_dir = resolve_path("templates")
-    env = Environment(
-        loader=FileSystemLoader(templates_dir),
-        autoescape=select_autoescape(["html"]),
-    )
-    template = env.get_template("settings_schema.html")
-
-    schema = plugin.build_settings_schema()
-    html = template.render(settings_schema=schema, plugin_settings={})
-
-    assert 'name="menuUrl"' in html
-    assert 'name="daysToShow"' in html
-    assert 'name="showCarbs"' in html
-    assert "Visit your school district" in html
-    assert "Nutrislice site" in html
