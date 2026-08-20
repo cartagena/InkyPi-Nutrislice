@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A single third-party plugin for [InkyPi](https://github.com/fatihak/InkyPi) (an e-ink display framework). It renders a school cafeteria's Nutrislice menu — optionally with per-item carb counts — onto the display.
+A single third-party plugin for [InkyPi](https://github.com/jtn0123/InkyPi) (an e-ink display framework). It renders a school cafeteria's Nutrislice menu — optionally with per-item carb counts — onto the display.
 
 **Requires the [jtn0123/InkyPi](https://github.com/jtn0123/InkyPi) fork, not upstream**. `nutrislice.py` imports four host APIs that exist only in that fork — `plugins.base_plugin.settings_schema` (the schema DSL), `DeviceConfigLike`, `utils.http_client.get_http_session`, and `utils.time_utils.get_timezone` — plus `BasePlugin.get_oriented_dimensions`. On upstream this fails at import time. Unlike the sibling [InkyPi-BloodSugar](https://github.com/cartagena/InkyPi-BloodSugar) plugin, which guards its one fork-only import and degrades to `settings.html`, there is no upstream fallback path here; don't add fork-only imports without deciding which of those two stances this repo is taking. It is not a standalone runnable app: `inkypi plugin install` clones this repo and expects the plugin folder at the *repo root* (matching `install/cli/inkypi-plugin`'s `git sparse-checkout set "$PLUGIN_ID"` convention, shared with upstream) — this repo's top-level `nutrislice/` is that folder. It gets copied into an InkyPi checkout at `src/plugins/nutrislice/` and loaded via `src/plugins/nutrislice/plugin-info.json`.
 
